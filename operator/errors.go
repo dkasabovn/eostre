@@ -18,7 +18,7 @@ var (
 	ErrOperandResultMismatch = errors.New("operands must only return error")
 )
 
-func NewArgumentNumberMismatchErr(expected, got int) *ErrArgumentNumberMismatch {
+func NewArgumentNumberMismatchErr(expected, got int) error {
 	return &ErrArgumentNumberMismatch{
 		expected: expected,
 		got:      got,

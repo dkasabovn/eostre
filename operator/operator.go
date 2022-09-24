@@ -3,6 +3,7 @@ package operator
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 
 	"eostre/packet"
@@ -43,12 +44,10 @@ func (o *Operator) Call() (err error) {
 
 	results := callableOperand.Call(params)
 
-	if len(results) != 1 || !results[0].Type().Implements(reflect.TypeOf((*error)(nil))) {
-		return ErrOperandResultMismatch
+	if results[0].IsNil() {
+		return nil
 	}
-
-	err = results[0].Interface().(error)
-	return err
+	return results[0].Interface().(error)
 }
 
 func (o *Operator) validateArguments() ([]reflect.Value, error) {
@@ -63,8 +62,12 @@ func (o *Operator) validateArguments() ([]reflect.Value, error) {
 	}
 
 	// check that the first argument to an operand is context.Context
-	if reflectedFunction.In(0).Kind() != reflect.Interface {
+	if reflectedFunction.In(0) != reflect.TypeOf((*context.Context)(nil)).Elem() {
 		return nil, ErrFirstArgNotContext
+	}
+
+	if reflectedFunction.NumOut() != 1 || reflectedFunction.Out(0) != reflect.TypeOf((*error)(nil)).Elem() {
+		return nil, ErrOperandResultMismatch
 	}
 
 	operandArgs := make([]reflect.Value, len(o.task.Args)+1)
@@ -84,24 +87,26 @@ func (o *Operator) validateArguments() ([]reflect.Value, error) {
 
 func convertValue(argType packet.Type, opType reflect.Type, value any) (reflect.Value, error) {
 	switch argType {
+	// TODO: Support []bytes
 	case packet.Float64, packet.Float32:
-		float, ok := value.(float64)
+		float, ok := convertToFloat64(argType, value)
 		if !ok {
 			return reflect.Value{}, ErrParsingType
 		}
 		v := reflect.New(argType.ConvertToType())
-		if v.Type() != opType {
+		if v.Elem().Type() != opType {
 			return reflect.Value{}, ErrParsingType
 		}
+		fmt.Println("here")
 		v.Elem().SetFloat(float)
 		return v.Elem(), nil
 	case packet.Int64, packet.Int32, packet.Int, packet.Int16, packet.Int8:
-		intv, ok := value.(int64)
+		intv, ok := convertToI64(argType, value)
 		if !ok {
 			return reflect.Value{}, ErrParsingType
 		}
 		v := reflect.New(argType.ConvertToType())
-		if v.Type() != opType {
+		if v.Elem().Type() != opType {
 			return reflect.Value{}, ErrParsingType
 		}
 		v.Elem().SetInt(intv)
@@ -112,7 +117,7 @@ func convertValue(argType packet.Type, opType reflect.Type, value any) (reflect.
 			return reflect.Value{}, ErrParsingType
 		}
 		v := reflect.New(argType.ConvertToType())
-		if v.Type() != opType {
+		if v.Elem().Type() != opType {
 			return reflect.Value{}, ErrParsingType
 		}
 		v.Elem().SetString(stringv)
@@ -133,7 +138,7 @@ func convertValue(argType packet.Type, opType reflect.Type, value any) (reflect.
 			return reflect.Value{}, ErrParsingType
 		}
 		v := reflect.New(argType.ConvertToType())
-		if v.Type() != opType {
+		if v.Elem().Type() != opType {
 			return reflect.Value{}, ErrParsingType
 		}
 		v.Elem().SetBool(boolv)

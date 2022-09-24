@@ -44,6 +44,7 @@ type worker struct {
 	taskStream  chan *packet.Task
 	semaphore   chan struct{}
 	osNotify    chan os.Signal
+	errorChan   chan error
 }
 
 func NewWorker(queue SimpleQueue, opts ...WorkerConfigFunc) Worker {
@@ -55,6 +56,7 @@ func NewWorker(queue SimpleQueue, opts ...WorkerConfigFunc) Worker {
 		taskStream:  make(chan *packet.Task),
 		semaphore:   make(chan struct{}, 1),
 		osNotify:    make(chan os.Signal),
+		errorChan:   make(chan error),
 	}
 
 	for _, opt := range opts {
@@ -73,8 +75,7 @@ func (w *worker) read(ctx context.Context) {
 		case <-ticker.C:
 			tasks, err := w.queue.Read(ctx)
 			if err != nil {
-				// TODO: let the user know that the queue stopped?
-				w.osNotify <- os.Interrupt
+				w.errorChan <- err
 				continue
 			}
 
@@ -97,7 +98,7 @@ func (w *worker) RunOnce(ctx context.Context, task *packet.Task) {
 
 	err := operator.NewOperator(taskFunction, task).Call()
 	if err != nil {
-		// TODO: let the user know about the error
+		w.errorChan <- err
 		return
 	}
 }

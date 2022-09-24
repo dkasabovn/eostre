@@ -47,7 +47,7 @@ func (t Type) ConvertToType() reflect.Type {
 	case Bytes:
 		return reflect.TypeOf([]byte{})
 	case Bool:
-		return reflect.TypeOf(false)
+		return reflect.TypeOf(bool(false))
 	}
 	return nil
 }

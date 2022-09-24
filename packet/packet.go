@@ -38,6 +38,9 @@ func (a *Arg) assert() error {
 		a.Value = bytes
 		return nil
 	case Struct:
+		if val.Kind() != reflect.Struct {
+			return NewInvalidTypeErr(string(a.Type), val.Kind().String())
+		}
 		bytes, err := json.Marshal(a.Value)
 		if err != nil {
 			return err
