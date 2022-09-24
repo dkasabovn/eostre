@@ -5,6 +5,7 @@
 - Working on reporting Task errors to the worker
 - Working on a simple SQS client
 - Working on tests :)
+- Documentation
 
 ### Motivation
 
